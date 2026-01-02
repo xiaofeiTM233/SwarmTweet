@@ -4,7 +4,6 @@ import dbConnect from '@/lib/db';
 import Tweet from '@/models/Tweet';
 import User from '@/models/User';
 import Media from '@/models/Media';
-// 导入所有清洗器和检测函数
 import { cleanV2Data, isV2Format, cleanVgData, isVgFormat, cleanVguData, isVguFormat } from '@/lib/cleaner';
 
 export async function POST(request: Request) {
@@ -28,6 +27,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: '未知的数据格式，无法导入' }, { status: 400 });
     }
 
+    // 解构清洗后的数据
     const { tweets, users, media } = cleanData;
     // 统一的数据库写入操作
     if (users.length > 0) {

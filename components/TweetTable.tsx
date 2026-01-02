@@ -59,12 +59,12 @@ const TweetTable: React.FC<TweetTableProps> = ({ tweets, loading }) => {
   ];
 
   return (
-    <Table 
-      columns={columns} 
-      dataSource={tweets} 
-      rowKey="id" 
-      loading={loading} 
-      size="small" 
+    <Table
+      columns={columns}
+      dataSource={tweets}
+      rowKey="id"
+      loading={loading}
+      size="small"
       styles={{
         body: { cell: { padding: '8px 12px' } },
         header: { cell: { padding: '8px 12px' } }

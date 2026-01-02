@@ -4,40 +4,52 @@ import dbConnect from '@/lib/db';
 import Tweet from '@/models/Tweet';
 import User from '@/models/User';
 import Media from '@/models/Media';
-import { cleanV2Data, isV2Format } from '@/lib/cleaner';
+// 导入所有清洗器和检测函数
+import { cleanV2Data, isV2Format, cleanVgData, isVgFormat, cleanVguData, isVguFormat } from '@/lib/cleaner';
 
 export async function POST(request: Request) {
   try {
     await dbConnect();
     const body = await request.json();
 
-    // 格式检测和数据清洗
-    if (isV2Format(body)) {
-      const { tweets, users, media } = cleanV2Data(body);
+    let cleanData;
+    let formatName = '未知';
+    // 格式检测和数据清洗调度
+    if (isVguFormat(body)) {
+      formatName = 'vgu';
+      cleanData = cleanVguData(body);
+    } else if (isVgFormat(body)) {
+      formatName = 'vg';
+      cleanData = cleanVgData(body);
+    } else if (isV2Format(body)) {
+      formatName = 'v2';
+      cleanData = cleanV2Data(body);
+    } else {
+      return NextResponse.json({ success: false, error: '未知的数据格式，无法导入' }, { status: 400 });
+    }
 
-      // 使用清洗后的数据进行数据库操作
+    const { tweets, users, media } = cleanData;
+    // 统一的数据库写入操作
+    if (users.length > 0) {
       const userOps = users.map(user => ({
         updateOne: { filter: { id: user.id }, update: { $set: user }, upsert: true },
       }));
-      if (userOps.length > 0) await User.bulkWrite(userOps);
-
+      await User.bulkWrite(userOps);
+    }
+    if (media.length > 0) {
       const mediaOps = media.map(m => ({
         updateOne: { filter: { id: m.id }, update: { $set: m }, upsert: true },
       }));
-      if (mediaOps.length > 0) await Media.bulkWrite(mediaOps);
-
+      await Media.bulkWrite(mediaOps);
+    }
+    if (tweets.length > 0) {
       const tweetOps = tweets.map(tweet => ({
         updateOne: { filter: { id: tweet.id }, update: { $set: tweet }, upsert: true },
       }));
-      if (tweetOps.length > 0) await Tweet.bulkWrite(tweetOps);
-
-      return NextResponse.json({ success: true, message: `v2 格式数据导入成功！共处理 ${tweets.length} 条推文。` });
-    } 
-    // else if (isV1Format(body)) { ... } // 未来可以扩展其他格式
-    else {
-      return NextResponse.json({ success: false, error: '未知的数据格式' }, { status: 400 });
+      await Tweet.bulkWrite(tweetOps);
     }
 
+    return NextResponse.json({ success: true, message: `${formatName} 格式数据导入成功！共处理 ${tweets.length} 条推文。` });
   } catch (error) {
     console.error('Import error:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';

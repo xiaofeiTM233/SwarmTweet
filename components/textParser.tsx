@@ -1,6 +1,7 @@
 // components/textParser.tsx
 import React from 'react';
 import { Typography } from 'antd';
+import { ITweet } from '@/models/Tweet';
 
 const { Link } = Typography;
 
@@ -13,6 +14,7 @@ interface Entity {
   data: any;
 }
 
+// 解析简单文本并提取链接
 export const parseSimpleTextWithLinks = (text: string | undefined): ParsedText => {
   if (!text) return [];
   const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -26,18 +28,21 @@ export const parseSimpleTextWithLinks = (text: string | undefined): ParsedText =
   );
 };
 
-export const parseTweetText = (tweet: any): ParsedText => {
-  const text = tweet.content.text;
+// 解析推文文本
+export const parseTweetText = (tweet: ITweet): ParsedText => {
+  let text = tweet.content.text;
+  const tweetEntities = tweet.content.entities;
   const entities: Entity[] = [];
 
-  const tweetEntities = tweet.content.entities;
-  if (tweetEntities?.urls) tweetEntities.urls.forEach((e: any) => entities.push({ ...e, type: 'url', data: e }));
-  if (tweetEntities?.hashtags) tweetEntities.hashtags.forEach((e: any) => entities.push({ ...e, type: 'hashtag', data: e }));
-  if (tweetEntities?.mentions) tweetEntities.mentions.forEach((e: any) => entities.push({ ...e, type: 'mention', data: e }));
-  if (tweetEntities?.media) tweetEntities.media.forEach((e: any) => entities.push({ ...e, type: 'media', data: e }));
+  // 收集所有实体类型
+  if (tweetEntities?.urls) tweetEntities.urls.forEach(e => entities.push({ ...e, type: 'url', data: e }));
+  if (tweetEntities?.hashtags) tweetEntities.hashtags.forEach(e => entities.push({ ...e, type: 'hashtag', data: e }));
+  if (tweetEntities?.mentions) tweetEntities.mentions.forEach(e => entities.push({ ...e, type: 'mention', data: e }));
+  if (tweetEntities?.media) tweetEntities.media.forEach(e => entities.push({ ...e, type: 'media', data: e }));
 
   if (entities.length === 0) return [text];
 
+  // 按 start 索引对所有实体进行排序
   const sortedEntities = entities.sort((a, b) => a.start - b.start);
   const result: ParsedText = [];
   let lastIndex = 0;
@@ -48,38 +53,43 @@ export const parseTweetText = (tweet: any): ParsedText => {
       result.push(textChars.slice(lastIndex, entity.start).join(''));
     }
 
+    // 获取原始文本
     const originalText = textChars.slice(entity.start, entity.end).join('');
-    let entityElement: React.ReactNode;
 
+    // 跳过引用推文末尾的 URL 实体
+    const isLastEntity = index === sortedEntities.length - 1;
+    if (isLastEntity && entity.type === 'url' && tweet.content.quote && entity.end === textChars.length) {
+        lastIndex = entity.end;
+        return;
+    }
+    
+    let entityElement: React.ReactNode;
     switch (entity.type) {
       case 'url':
-      case 'media':
         entityElement = <Link href={entity.data.url} target="_blank" rel="noopener noreferrer" key={`entity-${index}`}>{entity.data.text}</Link>;
         break;
       case 'hashtag':
         entityElement = <Link href={`https://x.com/hashtag/${entity.data.text}`} target="_blank" rel="noopener noreferrer" key={`entity-${index}`}>{originalText}</Link>;
         break;
       case 'mention':
-        entityElement = <Link href={`https://x.com/${entity.data.name}`} target="_blank" rel="noopener noreferrer" key={`entity-${index}`}>{originalText}</Link>;
+        entityElement = <Link href={`https://x.com/${entity.data.username}`} target="_blank" rel="noopener noreferrer" key={`entity-${index}`}>{originalText}</Link>;
+        break;
+      case 'media':
+        // 媒体实体不渲染占位链接
         break;
       default:
         entityElement = originalText;
     }
-    
-    result.push(entityElement);
+    // 添加实体元素到结果中
+    if (entityElement) {
+      result.push(entityElement);
+    }
     lastIndex = entity.end;
   });
 
+  // 添加最后一个实体后面的剩余文本
   if (lastIndex < textChars.length) {
     result.push(textChars.slice(lastIndex).join(''));
-  }
-  
-  const lastEntity = sortedEntities[sortedEntities.length - 1];
-  if (lastEntity && (lastEntity.type === 'media' || (lastEntity.type === 'url' && tweet.content.quote)) && lastEntity.end === textChars.length) {
-      const lastResultItem = result[result.length - 1];
-      if (React.isValidElement(lastResultItem) && lastResultItem.key === `entity-${sortedEntities.length - 1}`) {
-        result.pop();
-      }
   }
 
   return result;

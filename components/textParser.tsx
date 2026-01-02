@@ -30,7 +30,7 @@ export const parseSimpleTextWithLinks = (text: string | undefined): ParsedText =
 
 // 解析推文文本
 export const parseTweetText = (tweet: ITweet): ParsedText => {
-  let text = tweet.content.text;
+  let text = tweet.content.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   const tweetEntities = tweet.content.entities;
   const entities: Entity[] = [];
 

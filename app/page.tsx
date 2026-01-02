@@ -30,7 +30,7 @@ const HomePage: React.FC = () => {
     filters: {
       hasMedia: 'any',
       hasRetweet: 'any',
-      isPrimary: 'yes', // 保持默认值
+      isPrimary: 'yes',
     },
   });
 
@@ -56,10 +56,10 @@ const HomePage: React.FC = () => {
 
       if (result.success) {
         setState(prevState => ({ 
-          ...prevState, 
-          tweets: result.data.tweets, 
-          authors: prevState.authors.length === 0 ? result.data.authors.map((a: any) => ({ value: a.id, label: a.name })) : prevState.authors,
-          loading: false 
+          ...prevState,
+          tweets: result.data.tweets,
+          authors: prevState.authors.length === 0 ? result.data.authors.map((a: IUser) => ({ value: a.id, label: a.name })) : prevState.authors,
+          loading: false
         }));
       } else {
         throw new Error(result.error);

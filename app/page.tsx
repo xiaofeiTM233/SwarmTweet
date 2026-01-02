@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Layout, Spin, Card, Row, Col, Space, Empty, Button } from 'antd';
+import { Layout, Spin, Card, Row, Col, Space, Empty, Button, Input } from 'antd';
 import FilterControls, { Filters } from '@/components/FilterControls';
 import ViewSwitcher, { ViewMode } from '@/components/ViewSwitcher';
 import TweetCard from '@/components/TweetCard';
@@ -37,6 +37,7 @@ const HomePage: React.FC = () => {
   // 移动端状态
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileSiderVisible, setMobileSiderVisible] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>('');
   useEffect(() => {
     const checkMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
     checkMobile();
@@ -59,7 +60,9 @@ const HomePage: React.FC = () => {
       if (currentFilters.hasRetweet !== 'any') params.append('hasRetweet', currentFilters.hasRetweet === 'yes' ? 'true' : 'false');
       if (currentFilters.isPrimary !== 'any') params.append('isPrimary', currentFilters.isPrimary);
       // 处理返回结果
-      const response = await fetch(`/api/tweets?${params.toString()}`);
+      const headers: Record<string, string> = {};
+      if (apiKey) headers['x-key'] = apiKey;
+      const response = await fetch(`/api/tweets?${params.toString()}`, { headers });
       const result = await response.json();
       if (result.success) {
         setState(prevState => ({ 
@@ -162,6 +165,11 @@ const HomePage: React.FC = () => {
           }}
         >
           <FilterControls onFilterChange={handleFilterChange} authors={state.authors} loading={state.loading} />
+          <Input.Password
+            placeholder="API Key"
+            value={apiKey}
+            onChange={e => setApiKey(e.target.value)}
+          />
         </Sider>
       )}
       <Content style={{ marginLeft: isMobile ? 0 : 280 }}>

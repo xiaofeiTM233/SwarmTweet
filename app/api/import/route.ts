@@ -7,6 +7,9 @@ import Media from '@/models/Media';
 import { cleanV2Data, isV2Format, cleanVgData, isVgFormat, cleanVguData, isVguFormat } from '@/lib/cleaner';
 
 export async function POST(request: Request) {
+  if (!request.headers.get('x-key') || request.headers.get('x-key') !== process.env.API_KEY) {
+    return NextResponse.json({ success: false, message: '无效的 API 密钥' }, { status: 403 });
+  }
   try {
     await dbConnect();
     const body = await request.json();

@@ -10,6 +10,10 @@ declare global {
   var mongoose: MongooseCache;
 }
 
+mongoose.plugin((schema) => {
+  schema.set('versionKey', false);
+});
+
 // 配置连接选项
 const opts: ConnectOptions = {};
 const MONGODB_URI = process.env.MONGODB_URI;

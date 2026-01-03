@@ -9,9 +9,15 @@ const { Text, Link } = Typography;
 interface TweetTableProps {
   tweets: any[];
   loading: boolean;
+  pagination?: {
+    current?: number;
+    pageSize?: number;
+    total?: number;
+    onChange?: (page: number, pageSize?: number) => void;
+  };
 }
 
-const TweetTable: React.FC<TweetTableProps> = ({ tweets, loading }) => {
+const TweetTable: React.FC<TweetTableProps> = ({ tweets, loading, pagination }) => {
   const columns: TableProps<any>['columns'] = [
     {
       title: '作者',
@@ -62,8 +68,15 @@ const TweetTable: React.FC<TweetTableProps> = ({ tweets, loading }) => {
     <Table
       columns={columns}
       dataSource={tweets}
-      rowKey="id"
       loading={loading}
+      rowKey="id"
+      pagination={pagination ? {
+        current: pagination.current,
+        pageSize: pagination.pageSize,
+        total: pagination.total,
+        showSizeChanger: true,
+        onChange: pagination.onChange,
+      } : false}
       size="small"
       styles={{
         body: { cell: { padding: '8px 12px' } },

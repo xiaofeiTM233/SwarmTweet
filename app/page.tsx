@@ -1,8 +1,8 @@
 // app/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Layout, Spin, Card, Row, Col, Space, Empty, Button, Input } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Layout, Spin, Card, Row, Col, Space, Empty, Button, Input, Pagination } from 'antd';
 import FilterControls, { Filters } from '@/components/FilterControls';
 import ViewSwitcher, { ViewMode } from '@/components/ViewSwitcher';
 import TweetCard from '@/components/TweetCard';
@@ -19,6 +19,11 @@ interface PageState {
   loading: boolean;
   viewMode: ViewMode;
   filters: Filters;
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+  loadingMore: boolean;
 }
 
 const HomePage: React.FC = () => {
@@ -32,12 +37,21 @@ const HomePage: React.FC = () => {
       hasRetweet: 'any',
       isPrimary: 'yes',
     },
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    hasMore: true,
+    loadingMore: false,
   });
 
   // 移动端状态
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [mobileSiderVisible, setMobileSiderVisible] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>('');
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth <= 768);
     checkMobile();
@@ -46,8 +60,14 @@ const HomePage: React.FC = () => {
   }, []);
 
   // 获取推文数据
-  const fetchTweets = async (currentFilters: Filters) => {
-    setState(prevState => ({ ...prevState, loading: true }));
+  const fetchTweets = async (currentFilters: Filters, page = 1, pageSizeParam?: number, isTable = false) => {
+    const pageSizeToUse = typeof pageSizeParam === 'number' ? pageSizeParam : state.pageSize;
+    // 若为表格分页请求，始终使用 table 的 loading
+    if (page === 1 || isTable) {
+      setState(prevState => ({ ...prevState, loading: true }));
+    } else {
+      setState(prevState => ({ ...prevState, loadingMore: true }));
+    }
     try {
       const params = new URLSearchParams();
       // 构建查询参数
@@ -59,35 +79,80 @@ const HomePage: React.FC = () => {
       if (currentFilters.hasMedia !== 'any') params.append('hasMedia', currentFilters.hasMedia === 'yes' ? 'true' : 'false');
       if (currentFilters.hasRetweet !== 'any') params.append('hasRetweet', currentFilters.hasRetweet === 'yes' ? 'true' : 'false');
       if (currentFilters.isPrimary !== 'any') params.append('isPrimary', currentFilters.isPrimary);
+      // 分页参数
+      params.append('page', String(page));
+      params.append('pageSize', String(pageSizeToUse));
+
       // 处理返回结果
       const headers: Record<string, string> = {};
       if (apiKey) headers['x-key'] = apiKey;
       const response = await fetch(`/api/tweets?${params.toString()}`, { headers });
       const result = await response.json();
       if (result.success) {
+        const newTweets: ITweet[] = result.data.tweets || [];
         setState(prevState => ({ 
           ...prevState,
-          tweets: result.data.tweets,
-          authors: prevState.authors.length === 0 ? result.data.authors.map((a: IUser) => ({ value: a.id, label: a.name })) : prevState.authors,
-          loading: false
+          tweets: isTable || page === 1 ? newTweets : [...prevState.tweets, ...newTweets],
+          authors: prevState.authors.length === 0 ? (result.data.authors || []).map((a: IUser) => ({ value: a.id, label: a.name })) : prevState.authors,
+          loading: false,
+          loadingMore: false,
+          page,
+          pageSize: pageSizeToUse,
+          total: typeof result.data.total === 'number' ? result.data.total : prevState.total,
+          hasMore: typeof result.data.total === 'number' ? (pageSizeToUse * page < result.data.total) : (newTweets.length === pageSizeToUse)
         }));
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
       console.error("获取推文失败:", error);
-      setState(prevState => ({ ...prevState, loading: false }));
+      setState(prevState => ({ ...prevState, loading: false, loadingMore: false }));
     }
   };
+
   // 初始化加载
   useEffect(() => {
-    fetchTweets(state.filters);
+    fetchTweets(state.filters, 1);
   }, []);
+
   // 筛选条件变化处理
   const handleFilterChange = (newFilters: Filters) => {
-    setState(prevState => ({ ...prevState, filters: newFilters }));
-    fetchTweets(newFilters);
+    setState(prevState => ({ ...prevState, filters: newFilters, page: 1, hasMore: true }));
+    fetchTweets(newFilters, 1);
   };
+
+  // 加载下一页
+  const loadMore = () => {
+    if (state.loading || state.loadingMore || !state.hasMore) return;
+    const nextPage = state.page + 1;
+    fetchTweets(state.filters, nextPage);
+  };
+
+  // 监听底部 sentinel
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (state.viewMode === 'table') return;
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+      observerRef.current = null;
+    }
+    observerRef.current = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      });
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+
+    const el = sentinelRef.current;
+    if (el) observerRef.current.observe(el);
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+    // 监听变化
+  }, [state.viewMode, state.hasMore, state.loading, state.loadingMore, state.filters, state.page]);
+
   // 渲染内容区域
   const renderContent = () => {
     // 加载中且无数据
@@ -101,17 +166,38 @@ const HomePage: React.FC = () => {
     // 根据视图模式渲染
     switch (state.viewMode) {
       case 'table':
-        return <TweetTable tweets={state.tweets} loading={state.loading} />;
+        return (
+          <TweetTable
+            tweets={state.loading ? [] : state.tweets}
+            loading={state.loading}
+            pagination={{
+              current: state.page,
+              pageSize: state.pageSize,
+              total: state.total,
+              onChange: (p: number, ps?: number) => {
+                const pageSizeToUse = ps || state.pageSize;
+                // 表格分页请求
+                fetchTweets(state.filters, p, pageSizeToUse, true);
+              },
+            }}
+          />
+        );
       case 'masonry':
-        return <TweetMasonry tweets={state.tweets} />;
+        return <>
+          <TweetMasonry tweets={state.tweets} />
+          <div ref={sentinelRef} />
+        </>;
       case 'card':
       default:
         return (
-          <Space orientation="vertical" size="middle" style={{ display: 'flex' }}>
-            {state.tweets.map(tweet => (
-              <TweetCard key={tweet.id} tweet={tweet} />
-            ))}
-          </Space>
+          <>
+            <Space orientation="vertical" size="middle" style={{ display: 'flex' }}>
+              {state.tweets.map(tweet => (
+                <TweetCard key={tweet.id} tweet={tweet} />
+              ))}
+            </Space>
+            <div ref={sentinelRef} />
+          </>
         );
     }
   };
@@ -184,16 +270,26 @@ const HomePage: React.FC = () => {
             <Col>
               <ViewSwitcher
                 viewMode={state.viewMode}
-                onChange={(mode) => setState(prevState => ({ ...prevState, viewMode: mode }))}
+                onChange={(mode) => {
+                  if (mode === 'masonry') {
+                    // 瀑布流视图默认每页 20 条
+                    setState(prev => ({ ...prev, viewMode: mode, page: 1, pageSize: 20 }));
+                    fetchTweets(state.filters, 1, 20);
+                  } else {
+                    // 其它视图默认每页 10 条
+                    setState(prev => ({ ...prev, viewMode: mode, page: 1, pageSize: 10 }));
+                    fetchTweets(state.filters, 1, 10);
+                  }
+                }}
               />
             </Col>
           </Row>
           <div style={{ minHeight: 'calc(100vh - 250px)' }}>
-            {state.viewMode !== 'table' ? (
-               <Spin spinning={state.loading} size="large">
-                  {renderContent()}
-               </Spin>
-            ) : renderContent()}
+            {renderContent()}
+            {/* 加载提示 */}
+            {state.loadingMore && state.tweets.length > 0 && (
+              <div style={{ textAlign: 'center', padding: 12 }}><Spin /></div>
+            )}
           </div>
         </Card>
       </Content>

@@ -7,7 +7,14 @@ import Media from '@/models/Media';
 import { cleanV2Data, isV2Format, cleanVgData, isVgFormat, cleanVguData, isVguFormat } from '@/lib/cleaner';
 
 export async function POST(request: Request) {
-  if (!request.headers.get('x-key') || request.headers.get('x-key') !== process.env.API_KEY) {
+  const API_KEY = process.env.API_KEY;
+  if (!API_KEY) {
+    console.error('❌ API_KEY 环境变量未定义');
+    throw new Error(
+      '请在 .env 文件中定义 API_KEY 环境变量'
+    );
+  }
+  if (!request.headers.get('x-key') || request.headers.get('x-key') !== API_KEY) {
     return NextResponse.json({ success: false, message: '无效的 API 密钥' }, { status: 403 });
   }
   try {
@@ -32,6 +39,11 @@ export async function POST(request: Request) {
 
     // 解构清洗后的数据
     const { tweets, users, media } = cleanData;
+
+    // 计算总条数
+    const totalTweets = tweets.length;
+    let newTweets = 0;
+
     // 统一的数据库写入操作
     if (users.length > 0) {
       const userOps = users.map(user => ({
@@ -49,13 +61,14 @@ export async function POST(request: Request) {
       const tweetOps = tweets.map(tweet => ({
         updateOne: { filter: { id: tweet.id }, update: { $set: tweet }, upsert: true },
       }));
-      await Tweet.bulkWrite(tweetOps);
+      const tweetResult = await Tweet.bulkWrite(tweetOps, { ordered: false });
+      newTweets = (tweetResult as any).upsertedCount ?? 0;
     }
 
-    return NextResponse.json({ success: true, message: `${formatName} 格式数据导入成功！共处理 ${tweets.length} 条推文。` });
+    return NextResponse.json({ success: true, message: `${formatName} 格式数据导入成功！`, data: { totalTweets, newTweets } });
   } catch (error) {
     console.error('Import error:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    return NextResponse.json({ success: false, message: errorMessage }, { status: 500 });
   }
 }

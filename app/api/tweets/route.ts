@@ -126,10 +126,12 @@ export async function GET(request: Request) {
     
     // 获取所有作者用于筛选器
     const allAuthors = await User.find({}).select('id name').lean();
-
     const hasMore = skip + populatedTweets.length < total;
 
-    return NextResponse.json({ success: true, data: { tweets: populatedTweets, authors: allAuthors, total, page, pageSize, hasMore } });
+    return NextResponse.json(
+      { success: true, data: { tweets: populatedTweets, authors: allAuthors, total, page, pageSize, hasMore } },
+      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=60, max-age=3600' } }
+    );
   } catch (error) {
     console.error('Fetch error:', error);
     const errorMessage = error instanceof Error ? error.message : '未知错误';

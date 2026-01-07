@@ -9,12 +9,13 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 
 dayjs.extend(relativeTime);
 
+const CACHER_URL = process.env.NEXT_PUBLIC_CACHER_URL || '';
 const { Text, Paragraph, Link } = Typography;
 
-// 用户信息 Tooltip 的内容 (已更新)
+// 用户信息提示框组件
 const UserTooltip = ({ author }: { author: IUser }) => {
   const userUrl = `https://x.com/${author.username}`;
-  
+
   return (
     <Space orientation="vertical" size="small">
       <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -27,22 +28,22 @@ const UserTooltip = ({ author }: { author: IUser }) => {
         </Space>
       </Link>
       <Paragraph style={{ color: 'rgba(255, 255, 255, 0.85)', marginBottom: 0, maxWidth: 300 }}>
-        {/* **关键修正：调用解析函数处理简介** */}
         {parseSimpleTextWithLinks(author.description)}
       </Paragraph>
     </Space>
   );
 };
 
-const MediaRenderer: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
+// 媒体展示组件
+const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   if (!mediaItem) return null;
   const isVideo = mediaItem.type === 'video' || mediaItem.type === 'animated_gif';
-  
+
   return (
     <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id}>
       <Image
         width={150}
-        src={isVideo ? (mediaItem.preview_image_url || mediaItem.url) : mediaItem.url}
+        src={`${CACHER_URL}${isVideo ? (mediaItem.preview_image_url || mediaItem.url) : mediaItem.url}`}
         alt={mediaItem.alt_text || mediaItem.type}
         preview={{ src: mediaItem.url }}
       />
@@ -59,6 +60,7 @@ const MediaRenderer: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   );
 };
 
+// 引用推文卡片组件
 const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
   if (!tweet || !tweet.author) return null;
   const author = tweet.author;
@@ -67,10 +69,11 @@ const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
 
   return (
     <Card size="small" style={{ marginTop: 12, borderColor: '#e8e8e8' }}>
+      {/* 作者信息 */}
       <Space align="center" size="small">
-        <Avatar src={author.avatar} size="small" />
+        <Avatar src={`${CACHER_URL}${author.avatar}`} size="small" />
         <Tooltip title={<UserTooltip author={author} />}>
-          <Text type="secondary" strong>@{author.username}</Text>
+          <Text strong>@{author.username}</Text>
         </Tooltip>
         <Text type="secondary">·</Text>
         <Tooltip title={dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}>
@@ -79,15 +82,17 @@ const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
           </Link>
         </Tooltip>
       </Space>
+      {/* 推文文本 */}
       <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
         {parseTweetText(tweet)}
       </Paragraph>
+      {/* 媒体内容 */}
       {media.length > 0 && (
         <div style={{ marginTop: 8 }}>
           <Image.PreviewGroup>
             <Space wrap>
               {media.map((mediaItem: any) => (
-                <MediaRenderer key={mediaItem.id} mediaItem={mediaItem} />
+                <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
               ))}
             </Space>
           </Image.PreviewGroup>
@@ -97,6 +102,7 @@ const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
   );
 };
 
+// 主推文卡片组件
 const TweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
   if (!tweet || !tweet.author) return null;
   const author = tweet.author;
@@ -107,8 +113,9 @@ const TweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
   return (
     <Card styles={{ body: { padding: '12px 16px' } }}>
       <Space align="start">
-        <Avatar src={author.avatar} size="large" />
+        <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" />
         <div style={{ flex: 1 }}>
+          {/* 作者信息 */}
           <Space align="center">
             <Tooltip title={<UserTooltip author={author} />}>
               <Text strong>@{author.username}</Text>
@@ -120,18 +127,21 @@ const TweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
               </Link>
             </Tooltip>
           </Space>
+          {/* 推文文本 */}
           <Paragraph style={{ marginTop: 8 }}>
             {parseTweetText(tweet)}
           </Paragraph>
+          {/* 媒体内容 */}
           {media.length > 0 && (
             <Image.PreviewGroup>
               <Space wrap>
                 {media.map((mediaItem: any) => (
-                  <MediaRenderer key={mediaItem.id} mediaItem={mediaItem} />
+                  <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
                 ))}
               </Space>
             </Image.PreviewGroup>
           )}
+          {/* 引用推文 */}
           {quotedTweet && <QuotedTweetCard tweet={quotedTweet} />}
         </div>
       </Space>

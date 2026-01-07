@@ -60,18 +60,26 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   );
 };
 
-// 引用推文卡片组件
-const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
+// 推文卡片组件
+const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuoted = false }) => {
   if (!tweet || !tweet.author) return null;
   const author = tweet.author;
+  const media = tweet.content?.entities?.media || [];
+  const quotedTweet = tweet.content?.quote;
   const tweetUrl = `https://x.com/${author.username}/status/${tweet.id}`;
-  const media = tweet.content.entities?.media || [];
-
-  return (
-    <Card size="small" style={{ marginTop: 12, borderColor: '#e8e8e8' }}>
+  const avatarUrl = `${CACHER_URL}${author.avatar}`;
+  const cardSize = isQuoted ? 'small' : 'default';
+  const avatarSize = isQuoted ? 'small' : 'large';
+  const spaceSize = isQuoted ? 'small' : undefined;
+  const bodyStyle = isQuoted ? undefined : { padding: '12px 16px' };
+  // 提取通用内容
+  const content = (
+    <>
       {/* 作者信息 */}
-      <Space align="center" size="small">
-        <Avatar src={`${CACHER_URL}${author.avatar}`} size="small" />
+      <Space align="center" size={spaceSize}>
+        {isQuoted && (
+          <Avatar src={avatarUrl} size={avatarSize} />
+        )}
         <Tooltip title={<UserTooltip author={author} />}>
           <Text strong>@{author.username}</Text>
         </Tooltip>
@@ -83,68 +91,44 @@ const QuotedTweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
         </Tooltip>
       </Space>
       {/* 推文文本 */}
-      <Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
+      <Paragraph style={{ marginTop: 8, marginBottom: isQuoted ? 0 : undefined }}>
         {parseTweetText(tweet)}
       </Paragraph>
       {/* 媒体内容 */}
       {media.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <Image.PreviewGroup>
-            <Space wrap>
-              {media.map((mediaItem: any) => (
-                <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
-              ))}
-            </Space>
-          </Image.PreviewGroup>
-        </div>
+        <Image.PreviewGroup>
+          <Space wrap>
+            {media.map((mediaItem: any) => (
+              <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
+            ))}
+          </Space>
+        </Image.PreviewGroup>
       )}
-    </Card>
+    </>
   );
-};
-
-// 主推文卡片组件
-const TweetCard: React.FC<{ tweet: any }> = ({ tweet }) => {
-  if (!tweet || !tweet.author) return null;
-  const author = tweet.author;
-  const media = tweet.content.entities?.media || [];
-  const quotedTweet = tweet.content.quote;
-  const tweetUrl = `https://x.com/${author.username}/status/${tweet.id}`;
 
   return (
-    <Card styles={{ body: { padding: '12px 16px' } }}>
-      <Space align="start">
-        <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" />
-        <div style={{ flex: 1 }}>
-          {/* 作者信息 */}
-          <Space align="center">
-            <Tooltip title={<UserTooltip author={author} />}>
-              <Text strong>@{author.username}</Text>
-            </Tooltip>
-            <Text type="secondary">·</Text>
-            <Tooltip title={dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}>
-              <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
-                {dayjs(tweet.timestamp).fromNow()}
-              </Link>
-            </Tooltip>
+    <Card size={cardSize} styles={{ body: bodyStyle }}>
+      {isQuoted ? (
+        // 引用推文
+        <>
+          {content}
+        </>
+      ) : (
+        // 主推文
+        <>
+          <Space align='start'>
+            <Avatar src={avatarUrl} size={avatarSize} />
+            <div style={{ flex: 1 }}>
+              {content}
+              {/* 引用推文 */}
+              {quotedTweet && (
+                <TweetCard tweet={quotedTweet} isQuoted />
+              )}
+            </div>
           </Space>
-          {/* 推文文本 */}
-          <Paragraph style={{ marginTop: 8 }}>
-            {parseTweetText(tweet)}
-          </Paragraph>
-          {/* 媒体内容 */}
-          {media.length > 0 && (
-            <Image.PreviewGroup>
-              <Space wrap>
-                {media.map((mediaItem: any) => (
-                  <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
-                ))}
-              </Space>
-            </Image.PreviewGroup>
-          )}
-          {/* 引用推文 */}
-          {quotedTweet && <QuotedTweetCard tweet={quotedTweet} />}
-        </div>
-      </Space>
+        </>
+      )}
     </Card>
   );
 };

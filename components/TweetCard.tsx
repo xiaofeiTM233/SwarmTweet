@@ -20,7 +20,7 @@ const UserTooltip = ({ author }: { author: IUser }) => {
     <Space orientation="vertical" size="small">
       <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
         <Space align="start">
-          <Avatar src={author.avatar} size="large" />
+          <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" />
           <div>
             <Text strong style={{ color: 'white' }}>{author.name}</Text><br />
             <Text type="secondary" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>@{author.username}</Text>
@@ -45,7 +45,7 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
         width={150}
         src={`${CACHER_URL}${isVideo ? (mediaItem.preview_image_url || mediaItem.url) : mediaItem.url}`}
         alt={mediaItem.alt_text || mediaItem.type}
-        preview={{ src: mediaItem.url }}
+        preview={{ src: `${CACHER_URL}${mediaItem.url}` }}
       />
       {isVideo && (
         <PlayCircleOutlined

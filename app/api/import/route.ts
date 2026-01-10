@@ -24,12 +24,12 @@ export async function POST(request: Request) {
     let cleanData;
     let formatName = '未知';
     // 格式检测和数据清洗调度
-    if (isVguFormat(body)) {
-      formatName = 'vgu';
-      cleanData = cleanVguData(body);
-    } else if (isVgFormat(body)) {
+    if (isVgFormat(body)) {
       formatName = 'vg';
       cleanData = cleanVgData(body);
+    } else if (isVguFormat(body)) {
+      formatName = 'vgu';
+      cleanData = cleanVguData(body);
     } else if (isV2Format(body)) {
       formatName = 'v2';
       cleanData = cleanV2Data(body);
@@ -47,19 +47,19 @@ export async function POST(request: Request) {
     // 统一的数据库写入操作
     if (users.length > 0) {
       const userOps = users.map(user => ({
-        updateOne: { filter: { id: user.id }, update: { $set: user }, upsert: true },
+        updateOne: { filter: { id: user.id }, update: { $setOnInsert: user }, upsert: true },
       }));
       await User.bulkWrite(userOps);
     }
     if (media.length > 0) {
       const mediaOps = media.map(m => ({
-        updateOne: { filter: { id: m.id }, update: { $set: m }, upsert: true },
+        updateOne: { filter: { id: m.id }, update: { $setOnInsert: m }, upsert: true },
       }));
       await Media.bulkWrite(mediaOps);
     }
     if (tweets.length > 0) {
       const tweetOps = tweets.map(tweet => ({
-        updateOne: { filter: { id: tweet.id }, update: { $set: tweet }, upsert: true },
+        updateOne: { filter: { id: tweet.id }, update: { $setOnInsert: tweet }, upsert: true },
       }));
       const tweetResult = await Tweet.bulkWrite(tweetOps, { ordered: false });
       newTweets = (tweetResult as any).upsertedCount ?? 0;

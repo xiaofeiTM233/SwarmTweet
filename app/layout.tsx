@@ -2,6 +2,7 @@
 import React from 'react';
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Analytics } from "@vercel/analytics/next"
 import GlobalLayout from '@/components/GlobalLayout';
 
 export const metadata = {
@@ -22,6 +23,7 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => {
           </GlobalLayout>
         </AntdRegistry>
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );

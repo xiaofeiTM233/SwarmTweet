@@ -27,7 +27,7 @@ const UserTooltip = ({ author }: { author: IUser }) => {
           </div>
         </Space>
       </Link>
-      <Paragraph style={{ color: 'rgba(255, 255, 255, 0.85)', marginBottom: 0, maxWidth: 300 }}>
+      <Paragraph style={{ color: 'rgba(255, 255, 255, 0.85)', maxWidth: 300 }}>
         {parseSimpleTextWithLinks(author.description)}
       </Paragraph>
     </Space>
@@ -71,7 +71,7 @@ const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuot
   const cardSize = isQuoted ? 'small' : 'default';
   const avatarSize = isQuoted ? 'small' : 'large';
   const spaceSize = isQuoted ? 'small' : undefined;
-  const bodyStyle = isQuoted ? undefined : { padding: '12px 16px' };
+  const cardStyle = isQuoted ? { root: { marginTop: '12px' } } : { body: { padding: '12px 16px' } };
   // 提取通用内容
   const content = (
     <>
@@ -91,7 +91,7 @@ const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuot
         </Tooltip>
       </Space>
       {/* 推文文本 */}
-      <Paragraph style={{ marginTop: 8, marginBottom: isQuoted ? 0 : undefined }}>
+      <Paragraph style={{ margin: '8px 0' }}>
         {parseTweetText(tweet)}
       </Paragraph>
       {/* 媒体内容 */}
@@ -108,7 +108,7 @@ const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuot
   );
 
   return (
-    <Card size={cardSize} styles={{ body: bodyStyle }}>
+    <Card size={cardSize} styles={cardStyle}>
       {isQuoted ? (
         // 引用推文
         <>

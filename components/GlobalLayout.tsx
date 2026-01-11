@@ -28,7 +28,7 @@ const GlobalLayout = ({ children }: { children: React.ReactNode }) => {
             borderBottom: '1px solid #f0f0f0' 
           }}>
             <h1 style={{ display: 'inline-flex', columnGap: 12 }}>
-              <img src={'./logo.svg'} draggable={false} alt="logo" style={{ width: 32, display: 'inline-block' }} />
+              <img src={'/logo.svg'} draggable={false} alt="logo" style={{ width: 32, display: 'inline-block' }} />
               <span style={{ fontSize: 18 }}>SwarmTweet</span>
             </h1>
           </Header>

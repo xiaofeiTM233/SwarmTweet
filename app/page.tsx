@@ -193,7 +193,7 @@ const HomePage: React.FC = () => {
           <>
             <Space orientation="vertical" size="middle" style={{ display: 'flex' }}>
               {state.tweets.map(tweet => (
-                <TweetCard key={tweet.id} tweet={tweet} />
+                <TweetCard key={tweet.id} tweet={tweet} isList={true} />
               ))}
             </Space>
             <div ref={sentinelRef} />

@@ -15,7 +15,6 @@ const { Text, Paragraph, Link } = Typography;
 // 用户信息提示框组件
 const UserTooltip = ({ author }: { author: IUser }) => {
   const userUrl = `https://x.com/${author.username}`;
-
   return (
     <Space orientation="vertical" size="small">
       <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
@@ -34,11 +33,10 @@ const UserTooltip = ({ author }: { author: IUser }) => {
   );
 };
 
-// 媒体展示组件
+// 媒体列表组件
 const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   if (!mediaItem) return null;
   const isVideo = mediaItem.type === 'video' || mediaItem.type === 'animated_gif';
-
   return (
     <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id}>
       <Image
@@ -50,9 +48,14 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
       {isVideo && (
         <PlayCircleOutlined
           style={{
-            position: 'absolute', top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)', fontSize: '32px',
-            color: 'white', opacity: 0.85, pointerEvents: 'none',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            fontSize: 32,
+            color: 'white',
+            opacity: 0.85,
+            pointerEvents: 'none'
           }}
         />
       )}
@@ -60,8 +63,109 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   );
 };
 
+// 媒体单个组件
+const MediaItem = ({ item, height = '100%', className = '' }: { item: any; height?: string | number, className?: string }) => {
+  const isVideo = item.type === 'video' || item.type === 'animated_gif';
+  return (
+    <div style={{ position: 'relative', width: '100%', height: height, overflow: 'hidden' }} className={className}>
+      <Image
+        src={`${CACHER_URL}${isVideo ? (item.preview_image_url || item.url) : item.url}`}
+        alt={item.alt_text || 'media'}
+        width={'100%'}
+        height={'100%'}
+        style={{ objectFit: 'cover', display: 'block' }}
+        preview={{ src: `${CACHER_URL}${item.url}` }}
+      />
+      {isVideo && (
+        <PlayCircleOutlined style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          fontSize: 40,
+          color: 'white',
+          opacity: 0.85,
+          pointerEvents: 'none',
+          filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))'
+        }} />
+      )}
+    </div>
+  );
+};
+
+// 媒体网格组件
+const MediaGrid: React.FC<{ media: any[], isList?: boolean }> = ({ media, isList }) => {
+  if (isList) {
+    return (
+      <>
+        {media.length > 0 && (
+          <Image.PreviewGroup>
+            <Space wrap>
+              {media.map((mediaItem: any) => (
+                <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
+              ))}
+            </Space>
+          </Image.PreviewGroup>
+        )}
+      </>
+    )
+  }
+  if (!media || media.length === 0) return null;
+  const count = media.length;
+  const containerStyle: React.CSSProperties = {
+    marginTop: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    width: '100%',
+    display: 'grid',
+    gap: '2px',
+  };
+  let gridStyle: React.CSSProperties = {};
+  if (count === 1) {
+    return (
+      <div style={{ ...containerStyle, maxHeight: 510, minHeight: 120 }}>
+         <MediaItem item={media[0]} height="auto" />
+      </div>
+    );
+  } else if (count === 2) {
+    gridStyle = {
+      gridTemplateColumns: '1fr 1fr',
+      aspectRatio: '16 / 9'
+    };
+  } else if (count === 3) {
+    gridStyle = {
+      gridTemplateColumns: '1fr 1fr',
+      gridTemplateRows: '1fr 1fr',
+      aspectRatio: '16 / 9'
+    };
+  } else if (count >= 4) {
+    gridStyle = {
+      gridTemplateColumns: '1fr 1fr',
+      gridTemplateRows: '1fr 1fr',
+      aspectRatio: '16 / 9'
+    };
+  }
+  return (
+    <Image.PreviewGroup>
+      <div style={{ ...containerStyle, ...gridStyle }}>
+        {media.slice(0, 4).map((item, index) => {
+          let itemStyle: React.CSSProperties = {};
+          if (count === 3 && index === 0) {
+            itemStyle = { gridRow: 'span 2' };
+          }
+          return (
+            <div key={item.id} style={{ ...itemStyle }}>
+              <MediaItem item={item} />
+            </div>
+          );
+        })}
+      </div>
+    </Image.PreviewGroup>
+  );
+};
+
 // 推文卡片组件
-const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuoted = false }) => {
+const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> = ({ tweet, isQuoted = false, isList = false }) => {
   if (!tweet || !tweet.author) return null;
   const author = tweet.author;
   const media = tweet.content?.entities?.media || [];
@@ -84,26 +188,26 @@ const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuot
           <Text strong>@{author.username}</Text>
         </Tooltip>
         <Text type="secondary">·</Text>
-        <Tooltip title={dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}>
-          <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
-            {dayjs(tweet.timestamp).fromNow()}
-          </Link>
-        </Tooltip>
+        {isList ? (
+          <Tooltip title={dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}>
+            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
+              {dayjs(tweet.timestamp).fromNow()}
+            </Link>
+          </Tooltip>
+        ) : (
+          <Tooltip title={`${dayjs(tweet.timestamp).fromNow()} ${dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}`}>
+            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
+              {dayjs(tweet.timestamp).format('YYYY-MM-DD')}
+            </Link>
+          </Tooltip>
+        )}
       </Space>
       {/* 推文文本 */}
       <Paragraph style={{ margin: '8px 0' }}>
         {parseTweetText(tweet)}
       </Paragraph>
       {/* 媒体内容 */}
-      {media.length > 0 && (
-        <Image.PreviewGroup>
-          <Space wrap>
-            {media.map((mediaItem: any) => (
-              <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
-            ))}
-          </Space>
-        </Image.PreviewGroup>
-      )}
+      <MediaGrid media={media} isList={isList} />
     </>
   );
 
@@ -123,7 +227,7 @@ const TweetCard: React.FC<{ tweet: any; isQuoted?: boolean }> = ({ tweet, isQuot
               {content}
               {/* 引用推文 */}
               {quotedTweet && (
-                <TweetCard tweet={quotedTweet} isQuoted />
+                <TweetCard tweet={quotedTweet} isQuoted isList={isList} />
               )}
             </div>
           </Space>

@@ -1,9 +1,11 @@
 // components/TweetCard.tsx
-import React from 'react';
-import { Avatar, Card, Image, Space, Tooltip, Typography } from 'antd';
+import React, { useRef } from 'react';
+import { Avatar, Card, Image, Space, Tooltip, Typography, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { IUser } from '@/models/User';
 import { parseTweetText, parseSimpleTextWithLinks } from '@/components/textParser';
+import { toPng } from 'html-to-image';
+import download from 'downloadjs';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -166,7 +168,9 @@ const MediaGrid: React.FC<{ media: any[], isList?: boolean }> = ({ media, isList
 
 // 推文卡片组件
 const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> = ({ tweet, isQuoted = false, isList = false }) => {
+  const ref = useRef<HTMLDivElement>(null);
   if (!tweet || !tweet.author) return null;
+  const [messageApi, contextHolder] = message.useMessage();
   const author = tweet.author;
   const media = tweet.content?.entities?.media || [];
   const quotedTweet = tweet.content?.quote;
@@ -176,6 +180,20 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
   const avatarSize = isQuoted ? 'small' : 'large';
   const spaceSize = isQuoted ? 'small' : undefined;
   const cardStyle = isQuoted ? { root: { marginTop: '12px' } } : { body: { padding: '12px 16px' } };
+  const theRef = isQuoted ? null : ref;
+  // 下载处理
+  const handleDownload = async () => {
+    if (!ref.current) return;
+    try {
+      messageApi.info('开始生成...');
+      const dataUrl = await toPng(ref.current);
+      messageApi.success('生成成功，准备下载');
+      download(dataUrl, `swarmtweet-${tweet.id}.png`);
+    } catch (error) {
+      messageApi.error('❌ 生成失败，请查看控制台或稍后重试');
+      console.error('❌ 生成失败:', error);
+    }
+  };
   // 提取通用内容
   const content = (
     <>
@@ -195,7 +213,7 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
             </Link>
           </Tooltip>
         ) : (
-          <Tooltip title={`${dayjs(tweet.timestamp).fromNow()} ${dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}`}>
+          <Tooltip title={<Link onClick={handleDownload} style={{ color: 'inherit' }}>{`${dayjs(tweet.timestamp).fromNow()} ${dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}`}</Link>}>
             <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
               {dayjs(tweet.timestamp).format('YYYY-MM-DD')}
             </Link>
@@ -212,7 +230,8 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
   );
 
   return (
-    <Card size={cardSize} styles={cardStyle}>
+    <Card ref={theRef} size={cardSize} styles={cardStyle}>
+      {contextHolder}
       {isQuoted ? (
         // 引用推文
         <>

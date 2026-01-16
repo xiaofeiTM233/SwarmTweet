@@ -18,17 +18,17 @@ const { Text, Paragraph, Link } = Typography;
 const UserTooltip = ({ author }: { author: IUser }) => {
   const userUrl = `https://x.com/${author.username}`;
   return (
-    <Space orientation="vertical" size="small">
-      <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+    <Space orientation="vertical" size="small" className="user-tooltip">
+      <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="user-tooltip-link">
         <Space align="start">
-          <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" />
+          <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" className="user-tooltip-avatar" />
           <div>
-            <Text strong style={{ color: 'white' }}>{author.name}</Text><br />
-            <Text type="secondary" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>@{author.username}</Text>
+            <Text strong className="user-tooltip-name" style={{ color: 'white' }}>{author.name}</Text><br />
+            <Text type="secondary" className="user-tooltip-username" style={{ color: 'rgba(255, 255, 255, 0.65)' }}>@{author.username}</Text>
           </div>
         </Space>
       </Link>
-      <Paragraph style={{ color: 'rgba(255, 255, 255, 0.85)', maxWidth: 300 }}>
+      <Paragraph className="user-tooltip-desc" style={{ color: 'rgba(255, 255, 255, 0.85)', maxWidth: 300 }}>
         {parseSimpleTextWithLinks(author.description)}
       </Paragraph>
     </Space>
@@ -40,15 +40,17 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   if (!mediaItem) return null;
   const isVideo = mediaItem.type === 'video' || mediaItem.type === 'animated_gif';
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id}>
+    <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id} className="media-box">
       <Image
         width={150}
         src={`${CACHER_URL}${isVideo ? (mediaItem.preview_image_url || mediaItem.url) : mediaItem.url}`}
         alt={mediaItem.alt_text || mediaItem.type}
         preview={{ src: `${CACHER_URL}${mediaItem.url}` }}
+        className="media-box-image"
       />
       {isVideo && (
         <PlayCircleOutlined
+          className="media-box-play"
           style={{
             position: 'absolute',
             top: '50%',
@@ -69,7 +71,7 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
 const MediaItem = ({ item, height = '100%', className = '' }: { item: any; height?: string | number, className?: string }) => {
   const isVideo = item.type === 'video' || item.type === 'animated_gif';
   return (
-    <div style={{ position: 'relative', width: '100%', height: height, overflow: 'hidden' }} className={className}>
+    <div style={{ position: 'relative', width: '100%', height: height, overflow: 'hidden' }} className={`media-item ${className}`}>
       <Image
         src={`${CACHER_URL}${isVideo ? (item.preview_image_url || item.url) : item.url}`}
         alt={item.alt_text || 'media'}
@@ -77,9 +79,10 @@ const MediaItem = ({ item, height = '100%', className = '' }: { item: any; heigh
         height={'100%'}
         style={{ objectFit: 'cover', display: 'block' }}
         preview={{ src: `${CACHER_URL}${item.url}` }}
+        className="media-item-image"
       />
       {isVideo && (
-        <PlayCircleOutlined style={{
+        <PlayCircleOutlined className="media-item-play" style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
@@ -101,7 +104,7 @@ const MediaGrid: React.FC<{ media: any[], isList?: boolean }> = ({ media, isList
     return (
       <>
         {media.length > 0 && (
-          <Image.PreviewGroup>
+          <Image.PreviewGroup classNames={{ root: 'media-grid-list' }}>
             <Space wrap>
               {media.map((mediaItem: any) => (
                 <MediaBox key={mediaItem.id} mediaItem={mediaItem} />
@@ -125,7 +128,7 @@ const MediaGrid: React.FC<{ media: any[], isList?: boolean }> = ({ media, isList
   let gridStyle: React.CSSProperties = {};
   if (count === 1) {
     return (
-      <div style={{ ...containerStyle, maxHeight: 510, minHeight: 120 }}>
+      <div style={{ ...containerStyle, maxHeight: 510, minHeight: 120 }} className="media-grid">
          <MediaItem item={media[0]} height="auto" />
       </div>
     );
@@ -149,14 +152,14 @@ const MediaGrid: React.FC<{ media: any[], isList?: boolean }> = ({ media, isList
   }
   return (
     <Image.PreviewGroup>
-      <div style={{ ...containerStyle, ...gridStyle }}>
+      <div style={{ ...containerStyle, ...gridStyle }} className="media-grid">
         {media.slice(0, 4).map((item, index) => {
           let itemStyle: React.CSSProperties = {};
           if (count === 3 && index === 0) {
             itemStyle = { gridRow: 'span 2' };
           }
           return (
-            <div key={item.id} style={{ ...itemStyle }}>
+            <div key={item.id} style={{ ...itemStyle }} className="media-grid-item">
               <MediaItem item={item} />
             </div>
           );
@@ -198,39 +201,39 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
   const content = (
     <>
       {/* 作者信息 */}
-      <Space align="center" size={spaceSize}>
+      <Space align="center" size={spaceSize} className="tweet-card-header">
         {isQuoted && (
-          <Avatar src={avatarUrl} size={avatarSize} />
+          <Avatar src={avatarUrl} size={avatarSize} className="tweet-card-avatar" />
         )}
-        <Tooltip title={<UserTooltip author={author} />}>
-          <Text strong>@{author.username}</Text>
+        <Tooltip title={<UserTooltip author={author} />} className="tweet-card-author-tooltip">
+          <Text strong className="tweet-card-author">@{author.username}</Text>
         </Tooltip>
-        <Text type="secondary">·</Text>
+        <Text type="secondary" className="tweet-card-sep">·</Text>
         {isList ? (
           <Tooltip title={dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}>
-            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
+            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary" className="tweet-card-timestamp">
               {dayjs(tweet.timestamp).fromNow()}
             </Link>
           </Tooltip>
         ) : (
           <Tooltip title={<Link onClick={handleDownload} style={{ color: 'inherit' }}>{`${dayjs(tweet.timestamp).fromNow()} ${dayjs(tweet.timestamp).format('YYYY-MM-DD HH:mm:ss')}`}</Link>}>
-            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary">
+            <Link href={tweetUrl} target="_blank" rel="noopener noreferrer" type="secondary" className="tweet-card-timestamp">
               {dayjs(tweet.timestamp).format('YYYY-MM-DD')}
             </Link>
           </Tooltip>
         )}
       </Space>
       {/* 推文文本 */}
-      <Paragraph style={{ margin: '8px 0' }}>
+      <Paragraph style={{ margin: '8px 0' }} className="tweet-card-content">
         {parseTweetText(tweet)}
       </Paragraph>
       {/* 媒体内容 */}
-      <MediaGrid media={media} isList={isList} />
+      <div className="tweet-card-media"><MediaGrid media={media} isList={isList} /></div>
     </>
   );
 
   return (
-    <Card ref={theRef} size={cardSize} styles={cardStyle}>
+    <Card ref={theRef} size={cardSize} styles={cardStyle} className={`tweet-card ${isQuoted ? 'tweet-card-quoted' : ''}`}>
       {contextHolder}
       {isQuoted ? (
         // 引用推文
@@ -240,13 +243,13 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
       ) : (
         // 主推文
         <>
-          <Space align='start'>
-            <Avatar src={avatarUrl} size={avatarSize} />
+          <Space align='start' className="tweet-card-main">
+            <Avatar src={avatarUrl} size={avatarSize} className="tweet-card-avatar" />
             <div style={{ flex: 1 }}>
               {content}
               {/* 引用推文 */}
               {quotedTweet && (
-                <TweetCard tweet={quotedTweet} isQuoted isList={isList} />
+                <div className="tweet-card-quoted-wrap"><TweetCard tweet={quotedTweet} isQuoted isList={isList} /></div>
               )}
             </div>
           </Space>

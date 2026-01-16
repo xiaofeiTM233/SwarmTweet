@@ -43,8 +43,21 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
   };
   
   // 筛选条件变化处理
-  const handleFilterChange = (changedValues: Partial<Filters>) => {
-    setFilters(prev => ({ ...prev, ...changedValues }));
+  const handleFilterChange = (changedValues: any, allValues: any) => {
+    const newValues: Partial<Filters> = {};
+
+    if ('searchText' in allValues) newValues.searchText = allValues.searchText;
+    if ('author' in allValues) newValues.author = allValues.author;
+    if ('dateRange' in allValues && Array.isArray(allValues.dateRange) && allValues.dateRange.length === 2) {
+      const [start, end] = allValues.dateRange as [Dayjs, Dayjs];
+      newValues.dateRange = [start?.toISOString?.() ?? '', end?.toISOString?.() ?? ''];
+    }
+
+    if ('hasMedia' in changedValues) newValues.hasMedia = changedValues.hasMedia;
+    if ('hasRetweet' in changedValues) newValues.hasRetweet = changedValues.hasRetweet;
+    if ('isPrimary' in changedValues) newValues.isPrimary = changedValues.isPrimary;
+
+    setFilters(prev => ({ ...prev, ...newValues }));
   };
 
   // 文件上传处理
@@ -95,14 +108,14 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
       <div>
         <h4>筛选</h4>
         <Form layout="vertical" onValuesChange={handleFilterChange} initialValues={filters}>
-            <Form.Item label="推文内容">
+            <Form.Item name="searchText" label="推文内容">
                 <Search
                   placeholder="搜索..."
                   onSearch={handleFilter} // 点击搜索或回车时才触发
                   allowClear
                 />
             </Form.Item>
-            <Form.Item label="作者">
+            <Form.Item name="author" label="作者">
                 <Select
                   placeholder="不限"
                   options={authors}
@@ -110,7 +123,7 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
                   allowClear
                 />
             </Form.Item>
-            <Form.Item label="发布日期">
+            <Form.Item name="dateRange" label="发布日期">
                 <RangePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="hasMedia" label="是否包含媒体">

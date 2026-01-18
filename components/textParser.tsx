@@ -14,8 +14,12 @@ interface Entity {
   data: any;
 }
 
+const parseHtml = (text: string): string => {
+  return text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+};
+
 // 解析简单文本并提取链接
-export const parseSimpleTextWithLinks = (text: string | undefined): ParsedText => {
+export const parseSimple = (text: string | undefined): ParsedText => {
   if (!text) return [];
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -24,13 +28,13 @@ export const parseSimpleTextWithLinks = (text: string | undefined): ParsedText =
           <Link href={part} target="_blank" rel="noopener noreferrer" key={`simple-url-${i}`}>
               {part}
           </Link>
-      ) : part
+      ) : parseHtml(part)
   );
 };
 
 // 解析推文文本
-export const parseTweetText = (tweet: ITweet): ParsedText => {
-  let text = tweet.content.text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+export const parseTweet = (tweet: ITweet): ParsedText => {
+  let text = tweet.content.text;
   const tweetEntities = tweet.content.entities;
   const entities: Entity[] = [];
 
@@ -50,11 +54,11 @@ export const parseTweetText = (tweet: ITweet): ParsedText => {
 
   sortedEntities.forEach((entity, index) => {
     if (entity.start > lastIndex) {
-      result.push(textChars.slice(lastIndex, entity.start).join(''));
+      result.push(parseHtml(textChars.slice(lastIndex, entity.start).join('')));
     }
 
     // 获取原始文本
-    const originalText = textChars.slice(entity.start, entity.end).join('');
+    const originalText = parseHtml(textChars.slice(entity.start, entity.end).join(''));
 
     // 跳过引用推文末尾的 URL 实体
     const isLastEntity = index === sortedEntities.length - 1;
@@ -89,7 +93,7 @@ export const parseTweetText = (tweet: ITweet): ParsedText => {
 
   // 添加最后一个实体后面的剩余文本
   if (lastIndex < textChars.length) {
-    result.push(textChars.slice(lastIndex).join(''));
+    result.push(parseHtml(textChars.slice(lastIndex).join('')));
   }
 
   return result;

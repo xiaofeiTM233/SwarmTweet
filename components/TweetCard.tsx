@@ -3,7 +3,7 @@ import React, { useRef } from 'react';
 import { Avatar, Card, Image, Space, Tooltip, Typography, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { IUser } from '@/models/User';
-import { parseTweetText, parseSimpleTextWithLinks } from '@/components/textParser';
+import { parseTweet, parseSimple } from '@/components/textParser';
 import { toPng } from 'html-to-image';
 import download from 'downloadjs';
 import dayjs from 'dayjs';
@@ -18,7 +18,7 @@ const { Text, Paragraph, Link } = Typography;
 const UserTooltip = ({ author }: { author: IUser }) => {
   const userUrl = `https://x.com/${author.username}`;
   return (
-    <Space orientation="vertical" size="small" className="user-tooltip">
+    <Space orientation="vertical" size="small" className="user-tooltip" data-username={author.username}>
       <Link href={userUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="user-tooltip-link">
         <Space align="start">
           <Avatar src={`${CACHER_URL}${author.avatar}`} size="large" className="user-tooltip-avatar" />
@@ -29,7 +29,7 @@ const UserTooltip = ({ author }: { author: IUser }) => {
         </Space>
       </Link>
       <Paragraph className="user-tooltip-desc" style={{ color: 'rgba(255, 255, 255, 0.85)', maxWidth: 300 }}>
-        {parseSimpleTextWithLinks(author.description)}
+        {parseSimple(author.description)}
       </Paragraph>
     </Space>
   );
@@ -40,7 +40,7 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
   if (!mediaItem) return null;
   const isVideo = mediaItem.type === 'video' || mediaItem.type === 'animated_gif';
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id} className="media-box">
+    <div style={{ position: 'relative', display: 'inline-block' }} key={mediaItem.id} className="media-box" data-mediakey={mediaItem.id}>
       <Image
         width={150}
         src={`${CACHER_URL}${isVideo ? (mediaItem.preview_image_url || mediaItem.url) : mediaItem.url}`}
@@ -71,7 +71,7 @@ const MediaBox: React.FC<{ mediaItem: any }> = ({ mediaItem }) => {
 const MediaItem = ({ item, height = '100%', className = '' }: { item: any; height?: string | number, className?: string }) => {
   const isVideo = item.type === 'video' || item.type === 'animated_gif';
   return (
-    <div style={{ position: 'relative', width: '100%', height: height, overflow: 'hidden' }} className={`media-item ${className}`}>
+    <div style={{ position: 'relative', width: '100%', height: height, overflow: 'hidden' }} className={`media-item ${className}`} data-mediakey={item.id}>
       <Image
         src={`${CACHER_URL}${isVideo ? (item.preview_image_url || item.url) : item.url}`}
         alt={item.alt_text || 'media'}
@@ -225,7 +225,7 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
       </Space>
       {/* 推文文本 */}
       <Paragraph style={{ margin: '8px 0' }} className="tweet-card-content">
-        {parseTweetText(tweet)}
+        {parseTweet(tweet)}
       </Paragraph>
       {/* 媒体内容 */}
       <div className="tweet-card-media"><MediaGrid media={media} isList={isList} /></div>
@@ -233,7 +233,7 @@ const TweetCard: React.FC<{ tweet: any, isQuoted?: boolean, isList?: boolean }> 
   );
 
   return (
-    <Card ref={theRef} size={cardSize} styles={cardStyle} className={`tweet-card ${isQuoted ? 'tweet-card-quoted' : ''}`}>
+    <Card ref={theRef} size={cardSize} styles={cardStyle} className={`tweet-card ${isQuoted ? 'tweet-card-quoted' : ''}`} data-tweet={tweet.id} data-username={author.username}>
       {contextHolder}
       {isQuoted ? (
         // 引用推文

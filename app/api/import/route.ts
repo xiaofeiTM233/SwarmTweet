@@ -47,9 +47,9 @@ export async function POST(request: Request) {
     // 统一的数据库写入操作
     if (users.length > 0) {
       const userOps = users.map(user => ({
-        updateOne: { filter: { id: user.id }, update: { $setOnInsert: user }, upsert: true },
+        updateOne: { filter: { id: user.id }, update: { $set: user }, upsert: true },
       }));
-      await User.bulkWrite(userOps);
+      await User.bulkWrite(userOps, { ordered: false });
     }
     if (media.length > 0) {
       const mediaOps = media.map(m => ({

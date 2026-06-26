@@ -22,6 +22,7 @@ const TweetMasonry: React.FC<TweetMasonryProps> = ({ tweets }) => {
       items={masonryItems}
       columns={{ xs: 1, sm: 2, md: 3, lg: 4 }}
       gutter={16}
+      fresh
       itemRender={(item) => <TweetCard tweet={item.data} />}
     />
   );

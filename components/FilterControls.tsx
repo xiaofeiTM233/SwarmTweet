@@ -2,9 +2,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Input, Space, DatePicker, Button, Select, Checkbox, Upload, App, Radio, Form } from 'antd';
+import { Input, Space, DatePicker, Button, Select, Checkbox, Upload, App, Radio, Form, Avatar, theme } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import type { Dayjs } from 'dayjs';
+
+// 媒体缓存的基地址
+const CACHER_URL = process.env.NEXT_PUBLIC_CACHER_URL || '';
 
 const { Search } = Input;
 const { RangePicker } = DatePicker;
@@ -16,17 +19,35 @@ type Tristate = 'yes' | 'no' | 'any';
 export interface Filters {
   searchText?: string;
   dateRange?: [string, string];
-  author?: string;
+  author?: string[];
   hasMedia: Tristate;
   hasRetweet: Tristate;
   isPrimary: Tristate;
 }
 
+// 作者选项（value 为作者 id，label 为昵称，额外带上 username/avatar）
+export interface AuthorOption {
+  value: string;
+  label: string;
+  name: string;
+  username: string;
+  avatar?: string;
+}
+
 interface FilterControlsProps {
   onFilterChange: (filters: Filters) => void;
-  authors: { value: string; label: string }[];
+  authors: AuthorOption[];
   loading: boolean;
 }
+
+// 支持按 username / 昵称 / id 任意一者搜索
+const filterAuthorOption = (input: string, option?: AuthorOption) => {
+  const keyword = input.trim().toLowerCase();
+  if (!keyword) return true;
+  if (!option) return false;
+  return [option.username, option.name, option.label, option.value]
+    .some(field => (field ?? '').toLowerCase().includes(keyword));
+};
 
 const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors, loading }) => {
   // 筛选状态管理
@@ -36,6 +57,7 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
     isPrimary: 'yes', // 默认只看主推文
   });
   const { message } = App.useApp();
+  const { token } = theme.useToken();
 
   // 应用筛选条件
   const handleFilter = () => {
@@ -47,7 +69,7 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
     const newValues: Partial<Filters> = {};
 
     if ('searchText' in allValues) newValues.searchText = allValues.searchText;
-    if ('author' in allValues) newValues.author = allValues.author;
+    if ('author' in allValues) newValues.author = Array.isArray(allValues.author) ? allValues.author : [];
     if ('dateRange' in allValues && Array.isArray(allValues.dateRange) && allValues.dateRange.length === 2) {
       const [start, end] = allValues.dateRange as [Dayjs, Dayjs];
       newValues.dateRange = [start?.toISOString?.() ?? '', end?.toISOString?.() ?? ''];
@@ -117,10 +139,32 @@ const FilterControls: React.FC<FilterControlsProps> = ({ onFilterChange, authors
             </Form.Item>
             <Form.Item name="author" label="作者">
                 <Select
+                  mode="multiple"
                   placeholder="不限"
                   options={authors}
                   style={{ width: '100%' }}
                   allowClear
+                  showSearch={{ filterOption: filterAuthorOption }}
+                  maxTagCount="responsive"
+                  labelRender={({ value }) => {
+                    const data = authors.find(author => author.value === value);
+                    // 输入框内只展示用户名，昵称过长会把标签撞得很宽
+                    return <span>{data?.username ? `@${data.username}` : (data?.name ?? value)}</span>;
+                  }}
+                  optionRender={(option) => {
+                    const data = option.data as AuthorOption;
+                    return (
+                      <Space size={8}>
+                        <Avatar size={28} src={data.avatar ? `${CACHER_URL}${data.avatar}` : undefined}>
+                          {(data.name || data.username || '?').slice(0, 1).toUpperCase()}
+                        </Avatar>
+                        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.3, minWidth: 0 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{data.name}</span>
+                          <span style={{ fontSize: 12, color: token.colorTextDescription }}>@{data.username}</span>
+                        </div>
+                      </Space>
+                    );
+                  }}
                 />
             </Form.Item>
             <Form.Item name="dateRange" label="发布日期">

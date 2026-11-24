@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout, Spin, Card, Row, Col, Space, Empty, Button, Input, Pagination } from 'antd';
-import FilterControls, { Filters } from '@/components/FilterControls';
+import FilterControls, { Filters, AuthorOption } from '@/components/FilterControls';
 import ViewSwitcher, { ViewMode } from '@/components/ViewSwitcher';
 import TweetCard from '@/components/TweetCard';
 import TweetTable from '@/components/TweetTable';
@@ -15,7 +15,7 @@ const { Sider, Content } = Layout;
 
 interface PageState {
   tweets: ITweet[];
-  authors: { value: string; label: string }[];
+  authors: AuthorOption[];
   loading: boolean;
   viewMode: ViewMode;
   filters: Filters;
@@ -74,7 +74,9 @@ const HomePage: React.FC = () => {
       if (currentFilters.searchText) params.append('searchText', currentFilters.searchText);
       if (currentFilters.dateRange?.[0]) params.append('startDate', new Date(currentFilters.dateRange[0]).toISOString());
       if (currentFilters.dateRange?.[1]) params.append('endDate', new Date(currentFilters.dateRange[1]).toISOString());
-      if (currentFilters.author) params.append('author', currentFilters.author);
+      if (currentFilters.author?.length) {
+        currentFilters.author.forEach(authorId => params.append('author', authorId));
+      }
       // 三态筛选参数
       if (currentFilters.hasMedia !== 'any') params.append('hasMedia', currentFilters.hasMedia === 'yes' ? 'true' : 'false');
       if (currentFilters.hasRetweet !== 'any') params.append('hasRetweet', currentFilters.hasRetweet === 'yes' ? 'true' : 'false');
@@ -93,7 +95,15 @@ const HomePage: React.FC = () => {
         setState(prevState => ({ 
           ...prevState,
           tweets: isTable || page === 1 ? newTweets : [...prevState.tweets, ...newTweets],
-          authors: prevState.authors.length === 0 ? (result.data.authors || []).map((a: IUser) => ({ value: a.id, label: a.name })) : prevState.authors,
+          authors: prevState.authors.length === 0
+            ? (result.data.authors || []).map((a: IUser) => ({
+                value: a.id,
+                label: a.name,
+                name: a.name,
+                username: a.username,
+                avatar: a.avatar,
+              }))
+            : prevState.authors,
           loading: false,
           loadingMore: false,
           page,

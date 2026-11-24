@@ -63,9 +63,17 @@ export async function GET(request: Request) {
       query.timestamp = { $gte: startTimestamp, $lte: endTimestamp };
     }
 
-    // 作者筛选
-    const authorId = searchParams.get('author');
-    if (authorId) query.author = authorId;
+    // 作者筛选（支持多选：重复的 author 参数或逗号分隔）
+    const selectedAuthorIds = searchParams
+      .getAll('author')
+      .flatMap(value => value.split(','))
+      .map(value => value.trim())
+      .filter(Boolean);
+    if (selectedAuthorIds.length === 1) {
+      query.author = selectedAuthorIds[0];
+    } else if (selectedAuthorIds.length > 1) {
+      query.author = { $in: selectedAuthorIds };
+    }
 
     // 媒体附件三态筛选
     const hasMedia = searchParams.get('hasMedia');
@@ -146,8 +154,12 @@ export async function GET(request: Request) {
       return mt;
     });
 
-    // 获取所有作者用于筛选器
-    const allAuthors = await User.find({}).select('id name').lean();
+    // 获取所有作者用于筛选器（按 username 排序）
+    const allAuthors = await User.find({})
+      .select('id name username avatar')
+      .collation({ locale: 'en', strength: 2 })
+      .sort({ username: 1 })
+      .lean();
     const hasMore = skip + mainTweets.length < total;
 
     return NextResponse.json(

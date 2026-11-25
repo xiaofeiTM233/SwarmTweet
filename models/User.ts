@@ -12,6 +12,7 @@ export interface IUser extends Document {
   banner?: string;
   url?: string;
   timestamp: number;
+  isPrimary: boolean;
   entitie?: {
     urls?: IUrlEntity[];
   };
@@ -27,6 +28,7 @@ const UserSchema: Schema<IUser> = new Schema({
   banner: { type: String },
   url: { type: String },
   timestamp: { type: Number, required: true },
+  isPrimary: { type: Boolean, default: false, index: true },
   entitie: {
     _id: false,
     urls: [{

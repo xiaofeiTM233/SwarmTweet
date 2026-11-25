@@ -3,6 +3,24 @@ import { ITweet } from '@/models/Tweet';
 import { IUser } from '@/models/User';
 import { IMedia } from '@/models/Media';
 
+// === 长推文（note tweet）的正文与链接定位 ===
+// legacy.full_text 超长会被截断（末尾跟一个 t.co 自链接），完整正文与实体索引在 note_tweet 里；
+// 媒体链接只存在于 legacy.entities.urls，它的 start/end 是对截断正文算的，
+// 所以在 note 正文里按 t.co 短链本身重新找位置（索引按 Unicode 码点计）。
+const findUrlRange = (text: string, anchor?: string): [number, number] | undefined => {
+  if (!anchor) return undefined;
+  const chars = Array.from(text);
+  const target = Array.from(anchor);
+  for (let i = 0; i + target.length <= chars.length; i++) {
+    let hit = true;
+    for (let j = 0; j < target.length; j++) {
+      if (chars[i + j] !== target[j]) { hit = false; break; }
+    }
+    if (hit) return [i, i + target.length];
+  }
+  return undefined;
+};
+
 // === v2 格式清洗逻辑 ===
 const cleanV2Media = (rawMedia: any): IMedia => {
   return {
@@ -24,16 +42,26 @@ const cleanV2User = (rawUser: any): IUser => {
     description: rawUser.description,
     avatar: rawUser.profile_image_url,
     url: rawUser.url,
+    // 数据里显式带了 isPrimary 才保留，否则交给 schema 默认值（false）
+    ...(typeof rawUser.isPrimary === 'boolean' ? { isPrimary: rawUser.isPrimary } : {}),
   } as IUser;
 };
 // 清洗推文数据
 const cleanV2Tweet = (rawTweet: any, isPrimary: boolean): ITweet => {
   const cleanEntities: any = {};
+  // 长推文的完整正文在 note_tweet 里，legacy 的 text / entities 只对应被截断的那份
+  const note = rawTweet.note_tweet?.text ? rawTweet.note_tweet : undefined;
+  const rawEntities = note?.entities ?? rawTweet.entities;
   // 链接
-  if (rawTweet.entities?.urls) {
+  if (rawEntities?.urls) {
     cleanEntities.urls = [];
     cleanEntities.media = [];
-    rawTweet.entities.urls.forEach((url: any) => {
+    // note 的 entity_set 不含媒体，媒体链接要从 legacy 的 urls 里补回来
+    const urls = [...rawEntities.urls, ...(note ? (rawTweet.entities?.urls ?? []).filter((url: any) => url.media_key).map((url: any) => {
+      const range = findUrlRange(note.text, url.url);
+      return range ? { ...url, start: range[0], end: range[1] } : url;
+    }) : [])];
+    urls.forEach((url: any) => {
       const cleanUrl = {
         start: url.start, end: url.end, text: url.display_url, anchor: url.url,
         url: url.expanded_url, media_key: url.media_key,
@@ -48,16 +76,16 @@ const cleanV2Tweet = (rawTweet: any, isPrimary: boolean): ITweet => {
     if (cleanEntities.media.length === 0) delete cleanEntities.media;
   }
   // 标签
-  if (rawTweet.entities?.hashtags) {
-    cleanEntities.hashtags = rawTweet.entities.hashtags.map((tag: any) => ({
+  if (rawEntities?.hashtags) {
+    cleanEntities.hashtags = rawEntities.hashtags.map((tag: any) => ({
       text: tag.tag,
       start: tag.start,
       end: tag.end,
     }));
   }
   // 提及
-  if (rawTweet.entities?.mentions) {
-    cleanEntities.mentions = rawTweet.entities.mentions.map((mention: any) => ({
+  if (rawEntities?.mentions) {
+    cleanEntities.mentions = rawEntities.mentions.map((mention: any) => ({
       id: mention.id,
       username: mention.username,
       start: mention.start,
@@ -70,7 +98,7 @@ const cleanV2Tweet = (rawTweet: any, isPrimary: boolean): ITweet => {
     isPrimary,
     author: rawTweet.author_id,
     content: {
-      text: rawTweet.text,
+      text: note?.text ?? rawTweet.text,
       entities: cleanEntities,
       quote: rawTweet.referenced_tweets?.find((ref: any) => ref.type === 'quoted')?.id,
     },
@@ -163,22 +191,34 @@ const cleanVg = (entries: any[]): { tweets: ITweet[], users: IUser[], media: IMe
   const tweetMap = new Map<string, ITweet>();
   tweets.forEach(t => {
     if (t.rest_id && !tweetMap.has(t.rest_id)) {
-      const entities = [...(t.legacy?.entities?.media || []), ...(t.legacy?.entities?.urls || [])];
+      // 长推文的完整正文在 note_tweet 里，legacy 的 full_text / entities 只对应被截断的那份；
+      // note 的 entity_set 不含媒体，媒体链接要从 legacy 的 urls 里补回来
+      const note = t.note_tweet?.note_tweet_results?.result;
+      const noteEntitySet = note?.text ? (note.entity_set ?? note.entities) : undefined;
+      const entities = noteEntitySet
+        ? [
+            ...(noteEntitySet.urls || []),
+            ...(t.legacy?.entities?.urls || []).filter((e: any) => e.media_key).map((e: any) => {
+              const range = findUrlRange(note.text, e.url);
+              return range ? { ...e, indices: range } : e;
+            }),
+          ]
+        : [...(t.legacy?.entities?.media || []), ...(t.legacy?.entities?.urls || [])];
       const quote = t.__isPrimary ? t.quoted_status_result?.result?.rest_id : undefined;
       tweetMap.set(t.rest_id, {
         id: t.rest_id, timestamp: parseVgDate(t.legacy?.created_at), isPrimary: t.__isPrimary,
         author: t.legacy?.user_id_str,
         content: {
-          text: t.legacy?.full_text,
+          text: note?.text ?? t.legacy?.full_text,
           entities: {
             urls: entities.map((e: any) => ({
               anchor: e.url, text: e.display_url, url: e.expanded_url, media_key: e.media_key,
               start: e.indices?.[0], end: e.indices?.[1],
             })),
-            hashtags: t.legacy?.entities?.hashtags?.map((e: any) => ({
+            hashtags: (noteEntitySet?.hashtags ?? t.legacy?.entities?.hashtags)?.map((e: any) => ({
               text: e.text, start: e.indices?.[0], end: e.indices?.[1],
             })) || [],
-            mentions: t.legacy?.entities?.user_mentions?.map((e: any) => ({
+            mentions: (noteEntitySet?.user_mentions ?? t.legacy?.entities?.user_mentions)?.map((e: any) => ({
               username: e.screen_name, id: e.id_str, start: e.indices?.[0], end: e.indices?.[1],
             })) || [],
           },

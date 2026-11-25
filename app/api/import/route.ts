@@ -46,9 +46,19 @@ export async function POST(request: Request) {
 
     // 统一的数据库写入操作
     if (users.length > 0) {
-      const userOps = users.map(user => ({
-        updateOne: { filter: { id: user.id }, update: { $set: user }, upsert: true },
-      }));
+      // isPrimary：默认 false（由 schema 默认值处理），仅当导入数据里显式带了该字段时才覆盖
+      const userOps = users.map(user => {
+        const { isPrimary, ...rest } = user as typeof user & { isPrimary?: boolean };
+        return {
+          updateOne: {
+            filter: { id: user.id },
+            update: typeof isPrimary === 'boolean'
+              ? { $set: { ...rest, isPrimary } }
+              : { $set: rest },
+            upsert: true,
+          },
+        };
+      });
       await User.bulkWrite(userOps, { ordered: false });
     }
     if (media.length > 0) {
@@ -63,6 +73,17 @@ export async function POST(request: Request) {
       }));
       const tweetResult = await Tweet.bulkWrite(tweetOps, { ordered: false });
       newTweets = (tweetResult as any).upsertedCount ?? 0;
+    }
+
+    // 主推文的作者标记为主要用户（isPrimary = true）
+    const primaryAuthorIds = Array.from(new Set(
+      tweets.filter(tweet => tweet.isPrimary && tweet.author).map(tweet => tweet.author)
+    ));
+    if (primaryAuthorIds.length > 0) {
+      await User.updateMany(
+        { id: { $in: primaryAuthorIds }, isPrimary: { $ne: true } },
+        { $set: { isPrimary: true } }
+      );
     }
 
     return NextResponse.json({ success: true, message: `${formatName} 格式数据导入成功！`, data: { totalTweets, newTweets } });

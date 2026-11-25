@@ -154,9 +154,9 @@ export async function GET(request: Request) {
       return mt;
     });
 
-    // 获取所有作者用于筛选器（按 username 排序）
-    const allAuthors = await User.find({})
-      .select('id name username avatar')
+    // 获取所有主要用户（主推文作者）用于筛选器（按 username 排序）
+    const allAuthors = await User.find({ isPrimary: true })
+      .select('id name username avatar isPrimary')
       .collation({ locale: 'en', strength: 2 })
       .sort({ username: 1 })
       .lean();

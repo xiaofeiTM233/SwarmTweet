@@ -2,7 +2,8 @@
 'use client';
 
 import React from 'react';
-import { App, ConfigProvider, Layout } from 'antd';
+import { App, ConfigProvider, Layout, Button } from 'antd';
+import { GithubOutlined } from '@ant-design/icons';
 import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -31,6 +32,16 @@ const GlobalLayout = ({ children }: { children: React.ReactNode }) => {
               <img src={'/logo.svg'} draggable={false} alt="logo" style={{ width: 32, display: 'inline-block' }} />
               <span style={{ fontSize: 18 }}>SwarmTweet</span>
             </h1>
+            <Button
+              type="text"
+              icon={<GithubOutlined />}
+              href="https://github.com/xiaofeiTM233/SwarmTweet"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ marginLeft: 'auto' }}
+            >
+              GitHub
+            </Button>
           </Header>
           <Content style={{ padding: '24px', marginTop: 64, backgroundColor: '#f5f5ff', height: '100%', display: 'flex' }}>
             {children}
